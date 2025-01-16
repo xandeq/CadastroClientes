@@ -1,0 +1,97 @@
+﻿@model CadastroClientesAPI.Models.Cliente
+
+@{
+    ViewData["Title"] = "Cadastrar Cliente";
+}
+@{
+    var successMessage = TempData["SuccessMessage"] as string;
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @successMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+<h1>Cadastrar Cliente</h1>
+
+<form asp-action="Create" enctype="multipart/form-data" method="post">
+    <div class="form-group">
+        <label for="Nome">Nome</label>
+        <input type="text" class="form-control" id="Nome" name="Nome" value="@Model.Nome" required />
+    </div>
+
+    <div class="form-group">
+        <label for="Email">E-mail</label>
+        <input type="email" class="form-control" id="Email" name="Email" value="@Model.Email" required />
+    </div>
+
+    <div class="form-group">
+        <label for="Logotipo">Logotipo</label>
+        <input type="file" class="form-control-file" id="Logotipo" name="logotipo" />
+    </div>
+
+    <div id="logradouros-container border p-3 mx-1 my-y">
+        <h3>Logradouros</h3>
+        @for (int i = 0; i < Model.Logradouros.Count; i++)
+        {
+            <div class="logradouro-item">
+                <label for="Logradouros[@i].Endereco">Endereço</label>
+                <input type="text" class="form-control" name="Logradouros[@i].Endereco" value="@Model.Logradouros[i].Endereco" required />
+
+                <label for="Logradouros[@i].Cidade">Cidade</label>
+                <input type="text" class="form-control" name="Logradouros[@i].Cidade" value="@Model.Logradouros[i].Cidade" required />
+
+                <label for="Logradouros[@i].Estado">Estado</label>
+                <input type="text" class="form-control" name="Logradouros[@i].Estado" value="@Model.Logradouros[i].Estado" required />
+
+                <label for="Logradouros[@i].CEP">CEP</label>
+                <input type="text" class="form-control" name="Logradouros[@i].CEP" value="@Model.Logradouros[i].CEP" required />
+            </div>
+        }
+    </div>
+
+    <button type="button" id="add-logradouro" class="btn btn-secondary">Adicionar Logradouro</button>
+    <button type="submit" class="btn btn-primary">Cadastrar</button>
+</form>
+
+@section Scripts {
+    <script>
+        // Inicializa logradouroIndex com o número atual de logradouros no modelo
+        let logradouroIndex = @Model.Logradouros.Count;
+
+        // Evento para adicionar novos logradouros
+        document.getElementById("add-logradouro").addEventListener("click", function () {
+            const container = document.getElementById("logradouros-container");
+            const newLogradouro = `
+                        <div class="logradouro-item" id="logradouro-${logradouroIndex}">
+                            <label for="Logradouros[${logradouroIndex}].Endereco">Endereço</label>
+                            <input type="text" class="form-control" name="Logradouros[${logradouroIndex}].Endereco" required />
+
+                            <label for="Logradouros[${logradouroIndex}].Cidade">Cidade</label>
+                            <input type="text" class="form-control" name="Logradouros[${logradouroIndex}].Cidade" required />
+
+                            <label for="Logradouros[${logradouroIndex}].Estado">Estado</label>
+                            <input type="text" class="form-control" name="Logradouros[${logradouroIndex}].Estado" required />
+
+                            <label for="Logradouros[${logradouroIndex}].CEP">CEP</label>
+                            <input type="text" class="form-control" name="Logradouros[${logradouroIndex}].CEP" required />
+
+                            <button type="button" class="btn btn-danger remove-logradouro" data-index="${logradouroIndex}">Remover</button>
+                        </div>
+                    `;
+            container.insertAdjacentHTML("beforeend", newLogradouro);
+            logradouroIndex++;
+        });
+
+        // Evento para remover logradouros
+        document.getElementById("logradouros-container").addEventListener("click", function (e) {
+            if (e.target.classList.contains("remove-logradouro")) {
+                const index = e.target.getAttribute("data-index");
+                document.getElementById(`logradouro-${index}`).remove();
+            }
+        });
+    </script>
+}
+
