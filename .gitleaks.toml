@@ -1,0 +1,35 @@
+# Configuracao do gitleaks para o repositorio CadastroClientes.
+# Usa o conjunto padrao de regras do gitleaks e acrescenta regras especificas
+# para os padroes que ja apareceram neste codigo .NET.
+
+title = "CadastroClientes - gitleaks"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "dotnet-hardcoded-symmetric-signing-key"
+description = "Chave de assinatura simetrica (JWT/HS256) embutida no codigo"
+regex = '''SymmetricSecurityKey\s*\(\s*Encoding\.[A-Za-z0-9]+\.GetBytes\s*\(\s*"[^"]+"'''
+tags = ["jwt", "dotnet", "hardcoded-key"]
+
+[[rules]]
+id = "dotnet-connectionstring-with-password"
+description = "Connection string com senha embutida"
+regex = '''(?i)(Server|Data Source)=[^"']*;[^"']*(Password|Pwd)\s*=\s*[^;"'\s]+'''
+tags = ["database", "dotnet"]
+
+[allowlist]
+description = "Caminhos e amostras que nao devem gerar alerta"
+paths = [
+  '''(^|/)obj/''',
+  '''(^|/)bin/''',
+  '''(^|/)wwwroot/lib/''',
+  '''(^|/)\.gitleaks\.toml$''',
+]
+regexes = [
+  # Placeholder de documentacao: nao e uma chave real.
+  '''SUBSTITUA-POR-UMA-CHAVE-ALEATORIA-DE-NO-MINIMO-32-BYTES''',
+  # LocalDB com Trusted_Connection nao carrega senha.
+  '''Trusted_Connection=True''',
+]
