@@ -1,5 +1,6 @@
 using CadastroClientesAPI.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -17,7 +18,18 @@ namespace CadastroClientesAPI
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // Configuração de autenticação JWT
+            // Configuração de autenticação JWT.
+            // A chave de assinatura NUNCA pode estar no código: ela vem da configuração
+            // (variável de ambiente Jwt__Key, user-secrets ou appsettings de produção).
+            var jwtKey = builder.Configuration["Jwt:Key"];
+            if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "Configuração 'Jwt:Key' ausente ou fraca. Defina uma chave com no mínimo 32 bytes (256 bits) " +
+                    "via Jwt__Key (variável de ambiente), 'dotnet user-secrets set \"Jwt:Key\" <chave>' ou appsettings de produção. " +
+                    "A aplicação não inicia com chave de assinatura ausente ou abaixo do mínimo do HS256.");
+            }
+
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -29,7 +41,7 @@ namespace CadastroClientesAPI
                         ValidateIssuerSigningKey = true,
                         ValidIssuer = builder.Configuration["Jwt:Issuer"],
                         ValidAudience = builder.Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("YourSecretKeyHere"))
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                     };
                 });
 
@@ -73,6 +85,14 @@ namespace CadastroClientesAPI
                         new string[] {}
                     }
                 });
+            });
+
+            // Fail-closed: todo endpoint exige usuário autenticado, salvo [AllowAnonymous] explícito.
+            builder.Services.AddAuthorization(options =>
+            {
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
             });
 
             builder.Services.AddControllers().AddJsonOptions(options =>

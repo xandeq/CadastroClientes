@@ -1,5 +1,6 @@
 ﻿using CadastroClientesAPI.Data;
 using CadastroClientesAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,8 +8,13 @@ namespace CadastroClientesAPI.Controllers
 {
     [Route("api/Logradouros")]
     [ApiController]
+    // Logradouro é PII (endereço residencial). Nenhum endereço sai daqui sem autenticação.
+    [Authorize]
     public class LogradourosController : ControllerBase
     {
+        // Teto de página: a listagem devolvia a tabela inteira de endereços numa única resposta.
+        private const int MaxPageSize = 100;
+
         private readonly AppDbContext _context;
 
         public LogradourosController(AppDbContext context)
@@ -16,11 +22,18 @@ namespace CadastroClientesAPI.Controllers
             _context = context;
         }
 
-        // GET: api/Logradouros
+        // GET: api/Logradouros?page=1&pageSize=50
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Logradouro>>> GetLogradouros()
+        public async Task<ActionResult<IEnumerable<Logradouro>>> GetLogradouros([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
-            return await _context.Logradouros.ToListAsync();
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
+            return await _context.Logradouros
+                .OrderBy(l => l.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
         }
 
         // GET: api/Logradouros/5

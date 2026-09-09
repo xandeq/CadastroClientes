@@ -1,4 +1,5 @@
 using CadastroClientesUI.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CadastroClientesUI
 {
@@ -8,7 +9,12 @@ namespace CadastroClientesUI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddControllersWithViews();
+            // AutoValidateAntiforgeryToken global: todo POST/PUT/PATCH/DELETE valida o token
+            // antiforgery, mesmo que a action esqueca o atributo [ValidateAntiForgeryToken].
+            builder.Services.AddControllersWithViews(options =>
+            {
+                options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+            });
             builder.Services.AddHttpClient<ApiService>(client =>
             {
                 client.BaseAddress = new Uri("https://localhost:7080/api/");

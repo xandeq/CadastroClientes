@@ -10,19 +10,29 @@ namespace CadastroClientesAPI.Controllers
 {
     [Route("api/Clientes")]
     [ApiController]
+    // Todos os endpoints deste controller expõem PII (nome, e-mail, endereço).
+    // [Authorize] no nível da classe evita que um endpoint novo nasça anônimo por esquecimento.
+    [Authorize]
     public class ClientesController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        // Teto de página: sem isso, ?pageSize=2147483647 extrai a base inteira numa requisição.
+        private const int MaxPageSize = 100;
 
-        public ClientesController(AppDbContext context)
+        private readonly AppDbContext _context;
+        private readonly ILogger<ClientesController> _logger;
+
+        public ClientesController(AppDbContext context, ILogger<ClientesController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpGet]
-        [Authorize]
         public async Task<ActionResult<IEnumerable<ClienteDTO>>> GetClientes([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
             var clientes = await _context.Clientes
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -114,7 +124,10 @@ namespace CadastroClientesAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Erro ao criar cliente.", Details = ex.Message });
+                // Nunca devolver ex.Message ao cliente: vaza schema, caminhos e detalhes de infraestrutura.
+                var correlationId = HttpContext.TraceIdentifier;
+                _logger.LogError(ex, "Erro ao criar cliente. CorrelationId={CorrelationId}", correlationId);
+                return StatusCode(500, new { Message = "Erro ao criar cliente.", CorrelationId = correlationId });
             }
         }
 
@@ -163,7 +176,9 @@ namespace CadastroClientesAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Erro ao atualizar cliente.", Details = ex.Message });
+                var correlationId = HttpContext.TraceIdentifier;
+                _logger.LogError(ex, "Erro ao atualizar cliente {ClienteId}. CorrelationId={CorrelationId}", id, correlationId);
+                return StatusCode(500, new { Message = "Erro ao atualizar cliente.", CorrelationId = correlationId });
             }
         }
 
@@ -184,7 +199,9 @@ namespace CadastroClientesAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Erro ao excluir cliente.", Details = ex.Message });
+                var correlationId = HttpContext.TraceIdentifier;
+                _logger.LogError(ex, "Erro ao excluir cliente {ClienteId}. CorrelationId={CorrelationId}", id, correlationId);
+                return StatusCode(500, new { Message = "Erro ao excluir cliente.", CorrelationId = correlationId });
             }
         }
 

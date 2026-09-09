@@ -1,0 +1,34 @@
+#!/bin/sh
+# Gate de secrets: bloqueia o commit se o gitleaks encontrar segredo no conteudo staged.
+#
+# Ative uma vez por clone:
+#   git config core.hooksPath .githooks
+#
+# Bypass consciente (use so quando tiver certeza de que e falso positivo):
+#   SKIP_GITLEAKS=1 git commit ...
+
+set -e
+
+if [ "${SKIP_GITLEAKS}" = "1" ]; then
+    echo "pre-commit: gitleaks pulado por SKIP_GITLEAKS=1"
+    exit 0
+fi
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "pre-commit: gitleaks nao encontrado no PATH."
+    echo "  Instale em https://github.com/gitleaks/gitleaks/releases"
+    echo "  (ou rode com SKIP_GITLEAKS=1 se realmente precisar commitar agora)."
+    exit 1
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+echo "pre-commit: rodando gitleaks protect --staged"
+if ! gitleaks protect --staged --redact --no-banner --config "${REPO_ROOT}/.gitleaks.toml"; then
+    echo ""
+    echo "pre-commit: COMMIT BLOQUEADO - possivel segredo no conteudo staged (valores acima estao mascarados)."
+    echo "  Remova o segredo, mova para user-secrets/variavel de ambiente e tente de novo."
+    exit 1
+fi
+
+echo "pre-commit: gitleaks OK"
